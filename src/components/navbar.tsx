@@ -17,13 +17,16 @@ import {
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger,
 } from '@/components/ui/sheet';
-import { LogOut, User, LayoutDashboard, Menu, Plus } from 'lucide-react';
+import { LogOut, User, LayoutDashboard, Menu, Plus, Sun, Moon } from 'lucide-react';
+import { useTheme } from 'next-themes';
+import { NotificationBell } from '@/components/notification-bell';
 
 export function Navbar() {
   const { user, isAuthenticated, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { theme, setTheme } = useTheme();
 
   const handleLogout = async () => {
     await logout();
@@ -76,6 +79,7 @@ export function Navbar() {
         {/* User Menu */}
         {isAuthenticated ? (
           <div className="flex items-center gap-2">
+            <NotificationBell />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-8 w-8 rounded-full">
@@ -104,6 +108,10 @@ export function Navbar() {
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => router.push('/profile')}>
                   <User className="mr-2 h-4 w-4" />Profile
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
+                  {theme === 'dark' ? <Sun className="mr-2 h-4 w-4" /> : <Moon className="mr-2 h-4 w-4" />}
+                  {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
@@ -141,6 +149,13 @@ export function Navbar() {
                       </Link>
                     );
                   })}
+                  <button
+                    onClick={() => { setTheme(theme === 'dark' ? 'light' : 'dark'); }}
+                    className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                  >
+                    {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                    {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+                  </button>
                   <div className="my-3 h-px bg-border" />
                   <button
                     onClick={() => { handleLogout(); setMobileOpen(false); }}

@@ -6,9 +6,9 @@ import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 import {
   clubs as clubsApi, members as membersApi, invites as invitesApi,
-  applications as applicationsApi, auditLogs as auditApi,
+  applications as applicationsApi, auditLogs as auditApi, events as eventsApi,
   ApiError,
-  type Club, type Member, type Invite, type Application, type AuditLogEntry,
+  type Club, type Member, type Invite, type Application, type AuditLogEntry, type ClubEvent,
 } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -31,9 +31,11 @@ import {
   ArrowLeft, Users, Mail, Link2, ClipboardCheck, ScrollText,
   Settings, UserPlus, Copy, Trash2, Check, X, Shield, LogOut,
   ChevronRight, RefreshCw, Share2, MessageCircle, Smartphone, ExternalLink,
+  CalendarDays, MapPin, Clock, UserCheck, Plus, Loader2,
 } from 'lucide-react';
 import { Badminton } from '@/components/icons';
 import { PhoneInput } from '@/components/phone-input';
+import { ClubDetailSkeleton } from '@/components/skeletons';
 
 export default function ClubDetailPage() {
   const params = useParams();
@@ -48,6 +50,7 @@ export default function ClubDetailPage() {
   const [applicationsList, setApplicationsList] = useState<Application[]>([]);
   const [auditLogsList, setAuditLogsList] = useState<AuditLogEntry[]>([]);
   const [auditNextToken, setAuditNextToken] = useState('');
+  const [eventsList, setEventsList] = useState<ClubEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
 
@@ -98,6 +101,15 @@ export default function ClubDetailPage() {
     } catch { /* empty */ }
   }, [getToken, clubId, isAdmin]);
 
+  const loadEvents = useCallback(async () => {
+    const token = await getToken();
+    if (!token) return;
+    try {
+      const data = await eventsApi.list(token, clubId);
+      setEventsList(Array.isArray(data) ? data : []);
+    } catch { /* empty */ }
+  }, [getToken, clubId]);
+
   const loadAuditLogs = useCallback(async (pageToken?: string) => {
     const token = await getToken();
     if (!token || !isAdmin) return;
@@ -120,16 +132,13 @@ export default function ClubDetailPage() {
       if (activeTab === 'members') loadMembers();
       if (activeTab === 'invites') loadInvites();
       if (activeTab === 'applications') loadApplications();
+      if (activeTab === 'events') loadEvents();
       if (activeTab === 'audit') loadAuditLogs();
     }
-  }, [activeTab, loading, club, isAdmin, loadMembers, loadInvites, loadApplications, loadAuditLogs]);
+  }, [activeTab, loading, club, isAdmin, loadMembers, loadInvites, loadApplications, loadEvents, loadAuditLogs]);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <div className="animate-pulse text-muted-foreground">Loading club...</div>
-      </div>
-    );
+    return <ClubDetailSkeleton />;
   }
 
   if (!club) return null;
@@ -167,6 +176,7 @@ export default function ClubDetailPage() {
           <TabsTrigger value="members"><Users className="mr-1 h-3.5 w-3.5" />Members</TabsTrigger>
           {isAdmin && <TabsTrigger value="invites"><Link2 className="mr-1 h-3.5 w-3.5" />Invites</TabsTrigger>}
           {isAdmin && <TabsTrigger value="applications"><ClipboardCheck className="mr-1 h-3.5 w-3.5" />Applications</TabsTrigger>}
+          <TabsTrigger value="events"><CalendarDays className="mr-1 h-3.5 w-3.5" />Events</TabsTrigger>
           {isAdmin && <TabsTrigger value="audit"><ScrollText className="mr-1 h-3.5 w-3.5" />Audit Logs</TabsTrigger>}
           {isAdmin && <TabsTrigger value="settings"><Settings className="mr-1 h-3.5 w-3.5" />Settings</TabsTrigger>}
         </TabsList>
@@ -206,6 +216,18 @@ export default function ClubDetailPage() {
             getToken={getToken}
             clubId={clubId}
             onRefresh={loadApplications}
+          />
+        </TabsContent>
+
+        {/* Events Tab */}
+        <TabsContent value="events">
+          <EventsTab
+            events={eventsList}
+            isAdmin={isAdmin}
+            getToken={getToken}
+            clubId={clubId}
+            currentUserId={user?.id}
+            onRefresh={loadEvents}
           />
         </TabsContent>
 
@@ -1011,5 +1033,216 @@ function SettingsTab({ club, getToken, clubId, onUpdate, router }: {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+// ─── Events Tab ───
+function EventsTab({ events, isAdmin, getToken, clubId, currentUserId, onRefresh }: {
+  events: ClubEvent[]; isAdmin: boolean;
+  getToken: () => Promise<string | null>; clubId: string; currentUserId?: string; onRefresh: () => void;
+}) {
+  const [showCreate, setShowCreate] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [registeringId, setRegisteringId] = useState<string | null>(null);
+  const [form, setForm] = useState({ title: '', description: '', location: '', startTime: '', endTime: '', maxParticipants: '' });
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const token = await getToken();
+    if (!token) return;
+    setCreating(true);
+    try {
+      await eventsApi.create(token, clubId, {
+        ...form,
+        maxParticipants: form.maxParticipants ? Number(form.maxParticipants) : null,
+      });
+      toast.success('Event created!');
+      setShowCreate(false);
+      setForm({ title: '', description: '', location: '', startTime: '', endTime: '', maxParticipants: '' });
+      onRefresh();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : 'Failed to create event');
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleToggleRegister = async (event: ClubEvent) => {
+    const token = await getToken();
+    if (!token) return;
+    setRegisteringId(event.id);
+    try {
+      if (event.isRegistered) {
+        await eventsApi.unregister(token, clubId, event.id);
+        toast.success('Unregistered from event');
+      } else {
+        await eventsApi.register(token, clubId, event.id);
+        toast.success('Registered for event!');
+      }
+      onRefresh();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : 'Failed');
+    } finally {
+      setRegisteringId(null);
+    }
+  };
+
+  const upcoming = events.filter(e => new Date(e.startTime) >= new Date());
+  const past = events.filter(e => new Date(e.startTime) < new Date());
+
+  const formatDate = (iso: string) => {
+    const d = new Date(iso);
+    return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+  };
+  const formatTime = (iso: string) => {
+    return new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold">Events ({events.length})</h3>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={onRefresh}>
+            <RefreshCw className="mr-1 h-3.5 w-3.5" />Refresh
+          </Button>
+          {isAdmin && (
+            <Dialog open={showCreate} onOpenChange={setShowCreate}>
+              <DialogTrigger asChild>
+                <Button size="sm"><Plus className="mr-1 h-3.5 w-3.5" />New Event</Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Create Event</DialogTitle>
+                  <DialogDescription>Schedule a new event for your club</DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleCreate} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Title *</Label>
+                    <Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Description</Label>
+                    <Textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={2} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Location</Label>
+                    <Input value={form.location} onChange={e => setForm(f => ({ ...f, location: e.target.value }))} placeholder="e.g. Sports Center Court 3" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Start *</Label>
+                      <Input type="datetime-local" value={form.startTime} onChange={e => setForm(f => ({ ...f, startTime: e.target.value }))} required />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>End</Label>
+                      <Input type="datetime-local" value={form.endTime} onChange={e => setForm(f => ({ ...f, endTime: e.target.value }))} />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Max Participants</Label>
+                    <Input type="number" min={1} value={form.maxParticipants} onChange={e => setForm(f => ({ ...f, maxParticipants: e.target.value }))} placeholder="Unlimited" />
+                  </div>
+                  <DialogFooter>
+                    <Button type="button" variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button>
+                    <Button type="submit" disabled={creating}>
+                      {creating ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating...</> : 'Create Event'}
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+          )}
+        </div>
+      </div>
+
+      {events.length === 0 ? (
+        <Card className="border-dashed border-2">
+          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+            <CalendarDays className="h-10 w-10 text-muted-foreground mb-3" />
+            <h3 className="font-semibold">No events yet</h3>
+            <p className="text-sm text-muted-foreground mt-1">
+              {isAdmin ? 'Create an event to get your club members together!' : 'No upcoming events scheduled.'}
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-6">
+          {upcoming.length > 0 && (
+            <div className="space-y-3">
+              <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Upcoming</h4>
+              <div className="grid gap-3">
+                {upcoming.map(ev => (
+                  <EventCard key={ev.id} event={ev} onToggle={handleToggleRegister} registeringId={registeringId} />
+                ))}
+              </div>
+            </div>
+          )}
+          {past.length > 0 && (
+            <div className="space-y-3">
+              <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Past</h4>
+              <div className="grid gap-3">
+                {past.map(ev => (
+                  <EventCard key={ev.id} event={ev} onToggle={handleToggleRegister} registeringId={registeringId} isPast />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function EventCard({ event, onToggle, registeringId, isPast }: {
+  event: ClubEvent; onToggle: (e: ClubEvent) => void; registeringId: string | null; isPast?: boolean;
+}) {
+  const d = new Date(event.startTime);
+  const day = d.getDate();
+  const month = d.toLocaleString(undefined, { month: 'short' });
+  const time = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  const isFull = event.maxParticipants ? (event.registrationCount || 0) >= event.maxParticipants : false;
+
+  return (
+    <Card className={`transition-all ${isPast ? 'opacity-60' : 'hover:shadow-md hover:-translate-y-0.5'}`}>
+      <CardContent className="flex gap-4 py-4">
+        <div className="flex flex-col items-center justify-center rounded-lg bg-primary/10 text-primary px-3 py-2 min-w-[60px]">
+          <span className="text-2xl font-bold leading-none">{day}</span>
+          <span className="text-xs font-medium uppercase">{month}</span>
+        </div>
+        <div className="flex-1 min-w-0">
+          <h4 className="font-semibold truncate">{event.title}</h4>
+          <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{time}</span>
+            {event.location && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{event.location}</span>}
+            <span className="flex items-center gap-1">
+              <UserCheck className="h-3 w-3" />
+              {event.registrationCount || 0}{event.maxParticipants ? `/${event.maxParticipants}` : ''} going
+            </span>
+          </div>
+          {event.description && <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{event.description}</p>}
+        </div>
+        {!isPast && (
+          <div className="flex items-center shrink-0">
+            <Button
+              size="sm"
+              variant={event.isRegistered ? 'secondary' : 'default'}
+              disabled={registeringId === event.id || (isFull && !event.isRegistered)}
+              onClick={() => onToggle(event)}
+            >
+              {registeringId === event.id ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : event.isRegistered ? (
+                'Leave'
+              ) : isFull ? (
+                'Full'
+              ) : (
+                'Join'
+              )}
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

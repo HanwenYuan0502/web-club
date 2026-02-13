@@ -18,7 +18,7 @@ export async function PATCH(req: NextRequest) {
   const idx = db.users.findIndex(u => u.id === user.id);
   if (idx === -1) return errorResponse(404, 'User not found');
 
-  const { firstName, lastName, nickname, email, language, gender, dateOfBirth } = body;
+  const { firstName, lastName, nickname, email, language, gender, dateOfBirth, avatarUrl } = body;
 
   if (email && email !== user.email && db.users.find(u => u.email === email && u.id !== user.id)) {
     return errorResponse(409, 'Email already in use');
@@ -35,6 +35,7 @@ export async function PATCH(req: NextRequest) {
   if (language !== undefined) db.users[idx].language = language;
   if (gender !== undefined) db.users[idx].gender = gender;
   if (dateOfBirth !== undefined) db.users[idx].dateOfBirth = dateOfBirth;
+  if (avatarUrl !== undefined) db.users[idx].avatarUrl = avatarUrl;
 
   saveDb(db);
 

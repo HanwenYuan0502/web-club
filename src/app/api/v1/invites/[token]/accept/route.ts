@@ -12,6 +12,27 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   const invite = db.invites.find(i => i.token === token && i.status === 'ACTIVE');
   if (!invite) return errorResponse(404, 'Invalid or expired invite link');
 
+  // Check expiration
+  if (invite.expiresAt && new Date(invite.expiresAt) < new Date()) {
+    invite.status = 'EXPIRED';
+    saveDb(db);
+    return errorResponse(410, 'This invite link has expired');
+  }
+
+  // Check member limit
+  const club = db.clubs.find(c => c.id === invite.clubId);
+  if (club?.activeMemberLimit) {
+    const activeCount = db.memberships.filter(m => m.clubId === invite.clubId && m.status === 'ACTIVE').length;
+    if (activeCount >= club.activeMemberLimit) {
+      return errorResponse(403, 'Club has reached its member limit');
+    }
+  }
+
+  // Check if club is accepting new members
+  if (club && club.isAcceptingNewMembers === false) {
+    return errorResponse(403, 'Club is not accepting new members');
+  }
+
   const isTargeted = !!(invite.targetPhone || invite.targetEmail);
 
   if (isTargeted) {

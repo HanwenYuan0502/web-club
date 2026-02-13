@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { getDb, saveDb, uuid, getUserFromToken, jsonResponse, errorResponse, type DbClub } from '@/app/api/_store/db';
+import { getDb, saveDb, uuid, getUserFromToken, jsonResponse, errorResponse, addAuditLog, type DbClub } from '@/app/api/_store/db';
 
 export async function GET(req: NextRequest) {
   const user = getUserFromToken(req.headers.get('authorization'));
@@ -53,6 +53,7 @@ export async function POST(req: NextRequest) {
     createdAt: now,
   });
 
+  addAuditLog(db, { clubId: club.id, action: 'CLUB_CREATED', eventCategory: 'CLUB', targetType: 'CLUB', targetId: club.id, actorUserId: user.id, result: 'SUCCESS', statusCode: 201 });
   saveDb(db);
   return jsonResponse(club, 201);
 }

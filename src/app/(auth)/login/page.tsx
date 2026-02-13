@@ -125,7 +125,7 @@ function LoginForm() {
       ) : (
         <form onSubmit={handleVerifyOtp}>
           <CardContent className="space-y-6">
-            <div className="flex justify-center gap-2">
+            <div className="flex justify-center gap-1.5 sm:gap-2">
               {otpDigits.map((digit, i) => (
                 <Input
                   key={i}
@@ -137,7 +137,7 @@ function LoginForm() {
                   onChange={e => handleOtpChange(i, e.target.value)}
                   onKeyDown={e => handleOtpKeyDown(i, e)}
                   onFocus={e => e.target.select()}
-                  className="h-12 w-12 text-center text-lg font-semibold"
+                  className="h-11 w-10 sm:h-12 sm:w-12 text-center text-lg font-semibold p-0"
                   autoFocus={i === 0}
                 />
               ))}

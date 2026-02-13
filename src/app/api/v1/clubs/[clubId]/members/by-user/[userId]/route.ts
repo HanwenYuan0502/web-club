@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { getDb, saveDb, getUserFromToken, jsonResponse, errorResponse } from '@/app/api/_store/db';
+import { getDb, saveDb, getUserFromToken, jsonResponse, errorResponse, addAuditLog } from '@/app/api/_store/db';
 
 type Ctx = { params: Promise<{ clubId: string; userId: string }> };
 
@@ -21,6 +21,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   if (body.status) db.memberships[idx].status = body.status;
   if (body.adminNotes !== undefined) db.memberships[idx].adminNotes = body.adminNotes;
 
+  addAuditLog(db, { clubId, action: 'MEMBER_UPDATED', eventCategory: 'MEMBER', targetType: 'USER', targetId: userId, actorUserId: user.id, result: 'SUCCESS', statusCode: 200 });
   saveDb(db);
   return jsonResponse(db.memberships[idx]);
 }

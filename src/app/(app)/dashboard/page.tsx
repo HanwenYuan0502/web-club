@@ -9,7 +9,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, Users, Shield, MapPin, ArrowRight, ChevronRight } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ClubCardSkeleton } from '@/components/skeletons';
+import { Plus, Search, Users, Shield, MapPin, ArrowRight, ChevronRight, Filter } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function DashboardPage() {
@@ -17,6 +19,8 @@ export default function DashboardPage() {
   const [myClubs, setMyClubs] = useState<Club[]>([]);
   const [searchResults, setSearchResults] = useState<Club[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [filterType, setFilterType] = useState('');
+  const [filterJoinMode, setFilterJoinMode] = useState('');
   const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
 
@@ -36,12 +40,15 @@ export default function DashboardPage() {
   useEffect(() => { loadClubs(); }, [loadClubs]);
 
   const handleSearch = async () => {
-    if (!searchQuery.trim()) { setSearchResults([]); return; }
+    if (!searchQuery.trim() && !filterType && !filterJoinMode) { setSearchResults([]); return; }
     const token = await getToken();
     if (!token) return;
     setSearching(true);
     try {
-      const data = await meApi.searchClubs(token, searchQuery);
+      const filters: { type?: string; joinMode?: string } = {};
+      if (filterType) filters.type = filterType;
+      if (filterJoinMode) filters.joinMode = filterJoinMode;
+      const data = await meApi.searchClubs(token, searchQuery, filters);
       setSearchResults(Array.isArray(data) ? data : []);
     } catch {
       toast.error('Search failed');
@@ -70,21 +77,50 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Search */}
-      <div className="flex gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search clubs to join..."
-            className="pl-10"
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleSearch()}
-          />
+      {/* Search + Filters */}
+      <div className="space-y-2">
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search clubs to join..."
+              className="pl-10"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleSearch()}
+            />
+          </div>
+          <Button variant="secondary" onClick={handleSearch} disabled={searching}>
+            {searching ? 'Searching...' : 'Search'}
+          </Button>
         </div>
-        <Button variant="secondary" onClick={handleSearch} disabled={searching}>
-          {searching ? 'Searching...' : 'Search'}
-        </Button>
+        <div className="flex gap-2 flex-wrap">
+          <Select value={filterType} onValueChange={setFilterType}>
+            <SelectTrigger className="w-[140px] h-8 text-xs">
+              <Filter className="mr-1 h-3 w-3" /><SelectValue placeholder="Type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All Types</SelectItem>
+              <SelectItem value="CASUAL">Casual</SelectItem>
+              <SelectItem value="COMPETITIVE">Competitive</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={filterJoinMode} onValueChange={setFilterJoinMode}>
+            <SelectTrigger className="w-[160px] h-8 text-xs">
+              <SelectValue placeholder="Join Mode" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All Modes</SelectItem>
+              <SelectItem value="APPLY_TO_JOIN">Open</SelectItem>
+              <SelectItem value="INVITE_ONLY">Invite Only</SelectItem>
+            </SelectContent>
+          </Select>
+          {(filterType || filterJoinMode) && (
+            <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => { setFilterType(''); setFilterJoinMode(''); }}>
+              Clear Filters
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Search Results */}
@@ -111,20 +147,7 @@ export default function DashboardPage() {
 
         {loading ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {[1, 2, 3].map(i => (
-              <Card key={i} className="animate-pulse">
-                <CardHeader>
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-lg bg-muted" />
-                    <div className="flex-1 space-y-2">
-                      <div className="h-4 bg-muted rounded w-2/3" />
-                      <div className="h-3 bg-muted rounded w-1/2" />
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent><div className="h-4 bg-muted rounded w-1/3" /></CardContent>
-              </Card>
-            ))}
+            {[1, 2, 3].map(i => <ClubCardSkeleton key={i} />)}
           </div>
         ) : myClubs.length === 0 ? (
           <Card className="border-dashed border-2">

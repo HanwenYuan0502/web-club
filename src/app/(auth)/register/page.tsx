@@ -30,10 +30,24 @@ function RegisterForm() {
   const searchParams = useSearchParams();
   const redirect = searchParams.get('redirect') || '/dashboard';
   const { login } = useAuth();
-  const [step, setStep] = useState<Step>('phone');
+  // P2-1: Restore state from sessionStorage on mount
+  const [step, setStep] = useState<Step>(() => {
+    if (typeof window === 'undefined') return 'phone';
+    return (sessionStorage.getItem('bb_reg_step') as Step) || 'phone';
+  });
   const [loading, setLoading] = useState(false);
-  const [form, setForm] = useState<RegisterBody>({ phone: '', language: 'en' });
+  const [form, setForm] = useState<RegisterBody>(() => {
+    if (typeof window === 'undefined') return { phone: '', language: 'en' };
+    const saved = sessionStorage.getItem('bb_reg_form');
+    return saved ? JSON.parse(saved) : { phone: '', language: 'en' };
+  });
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Persist form + step to sessionStorage
+  useEffect(() => {
+    sessionStorage.setItem('bb_reg_step', step);
+    sessionStorage.setItem('bb_reg_form', JSON.stringify(form));
+  }, [step, form]);
 
   // OTP state
   const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', '']);
@@ -175,6 +189,9 @@ function RegisterForm() {
     setLoading(true);
     try {
       await login(form.phone.trim(), code);
+      // Clear saved form state on successful registration
+      sessionStorage.removeItem('bb_reg_step');
+      sessionStorage.removeItem('bb_reg_form');
       toast.success('Welcome to BadBuddy!');
       router.push(redirect);
     } catch (err) {
@@ -212,7 +229,7 @@ function RegisterForm() {
 
   return (
     <div className="space-y-6">
-      {/* Step Progress */}
+      {/* Step Progress — P2-2: smooth transitions */}
       <div className="flex items-center justify-center gap-2">
         {STEPS.map((s, i) => {
           const Icon = s.icon;
@@ -221,13 +238,13 @@ function RegisterForm() {
           return (
             <div key={s.id} className="flex items-center gap-2">
               {i > 0 && (
-                <div className={`h-px w-8 transition-colors ${isCompleted ? 'bg-primary' : 'bg-border'}`} />
+                <div className={`h-px w-8 transition-all duration-300 ${isCompleted ? 'bg-primary scale-x-100' : 'bg-border scale-x-75'}`} />
               )}
               <div className={`
-                flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all
-                ${isActive ? 'bg-primary text-primary-foreground shadow-sm' : ''}
+                flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all duration-300
+                ${isActive ? 'bg-primary text-primary-foreground shadow-sm scale-105' : ''}
                 ${isCompleted ? 'bg-primary/10 text-primary' : ''}
-                ${!isActive && !isCompleted ? 'bg-muted text-muted-foreground' : ''}
+                ${!isActive && !isCompleted ? 'bg-muted text-muted-foreground scale-95 opacity-60' : ''}
               `}>
                 {isCompleted ? <Check className="h-3.5 w-3.5" /> : <Icon className="h-3.5 w-3.5" />}
                 <span className="hidden sm:inline">{s.label}</span>
@@ -390,8 +407,8 @@ function RegisterForm() {
             </CardHeader>
             <form onSubmit={handleVerify}>
               <CardContent className="space-y-6">
-                {/* OTP Input Grid */}
-                <div className="flex justify-center gap-2">
+                {/* OTP Input Grid — P2-3: responsive sizing */}
+                <div className="flex justify-center gap-1.5 sm:gap-2">
                   {otpDigits.map((digit, i) => (
                     <Input
                       key={i}
@@ -403,7 +420,7 @@ function RegisterForm() {
                       onChange={e => handleOtpChange(i, e.target.value)}
                       onKeyDown={e => handleOtpKeyDown(i, e)}
                       onFocus={e => e.target.select()}
-                      className="h-12 w-12 text-center text-lg font-semibold"
+                      className="h-11 w-10 sm:h-12 sm:w-12 text-center text-lg font-semibold p-0"
                       autoFocus={i === 0}
                     />
                   ))}

@@ -65,8 +65,14 @@ export const me = {
   update: (token: string, body: Partial<UserProfile>) =>
     request<UserProfile>('/v1/me', { method: 'PATCH', token, body }),
 
-  searchClubs: (token: string, query?: string) =>
-    request<Club[]>(`/v1/me/clubs/search${query ? `?q=${encodeURIComponent(query)}` : ''}`, { token }),
+  searchClubs: (token: string, query?: string, filters?: { type?: string; joinMode?: string }) => {
+    const params = new URLSearchParams();
+    if (query) params.set('q', query);
+    if (filters?.type) params.set('type', filters.type);
+    if (filters?.joinMode) params.set('joinMode', filters.joinMode);
+    const qs = params.toString();
+    return request<Club[]>(`/v1/me/clubs/search${qs ? `?${qs}` : ''}`, { token });
+  },
 
   listApplications: (token: string) =>
     request<Application[]>('/v1/me/applications', { token }),
@@ -153,6 +159,52 @@ export const auditLogs = {
     request<AuditLogResponse>(`/v1/clubs/${clubId}/audit-logs`, { method: 'POST', token, body }),
 };
 
+// ─── Notifications ───
+export const notifications = {
+  list: (token: string) =>
+    request<Notification[]>('/v1/me/notifications', { token }),
+
+  markAllRead: (token: string) =>
+    request<{ ok: boolean }>('/v1/me/notifications', { method: 'POST', token }),
+};
+
+// ─── Events ───
+export const events = {
+  list: (token: string, clubId: string) =>
+    request<ClubEvent[]>(`/v1/clubs/${clubId}/events`, { token }),
+
+  create: (token: string, clubId: string, body: CreateEventBody) =>
+    request<ClubEvent>(`/v1/clubs/${clubId}/events`, { method: 'POST', token, body }),
+
+  get: (token: string, clubId: string, eventId: string) =>
+    request<ClubEvent>(`/v1/clubs/${clubId}/events/${eventId}`, { token }),
+
+  register: (token: string, clubId: string, eventId: string) =>
+    request<EventRegistration>(`/v1/clubs/${clubId}/events/${eventId}/register`, { method: 'POST', token }),
+
+  unregister: (token: string, clubId: string, eventId: string) =>
+    request<{ ok: boolean }>(`/v1/clubs/${clubId}/events/${eventId}/register`, { method: 'DELETE', token }),
+
+  registrations: (token: string, clubId: string, eventId: string) =>
+    request<EventRegistration[]>(`/v1/clubs/${clubId}/events/${eventId}/registrations`, { token }),
+};
+
+// ─── Upload ───
+export const upload = {
+  image: async (token: string, file: File): Promise<{ url: string }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch(`${API_BASE}/v1/upload`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` },
+      body: formData,
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) throw new ApiError(res.status, data);
+    return data as { url: string };
+  },
+};
+
 // ─── Types ───
 export type RegisterBody = {
   phone: string;
@@ -175,6 +227,7 @@ export type UserProfile = {
   language?: string;
   dateOfBirth?: string;
   gender?: string;
+  avatarUrl?: string;
   referrer?: string;
 };
 
@@ -293,4 +346,49 @@ export type AuditLogQuery = {
 export type AuditLogResponse = {
   items: AuditLogEntry[];
   nextPageToken: string;
+};
+
+export type Notification = {
+  id: string;
+  userId: string;
+  type: string;
+  title: string;
+  body: string;
+  clubId?: string;
+  linkUrl?: string;
+  read: boolean;
+  createdAt: string;
+};
+
+export type ClubEvent = {
+  id: string;
+  clubId: string;
+  title: string;
+  description?: string;
+  location?: string;
+  startTime: string;
+  endTime?: string;
+  maxParticipants?: number | null;
+  createdBy: string;
+  registrationCount?: number;
+  isRegistered?: boolean;
+  createdAt: string;
+};
+
+export type CreateEventBody = {
+  title: string;
+  description?: string;
+  location?: string;
+  startTime: string;
+  endTime?: string;
+  maxParticipants?: number | null;
+};
+
+export type EventRegistration = {
+  id: string;
+  eventId: string;
+  userId: string;
+  status: 'REGISTERED' | 'CANCELLED';
+  user?: Partial<UserProfile>;
+  createdAt: string;
 };

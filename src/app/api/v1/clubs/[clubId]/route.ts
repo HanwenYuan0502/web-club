@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { getDb, saveDb, getUserFromToken, jsonResponse, errorResponse } from '@/app/api/_store/db';
+import { getDb, saveDb, getUserFromToken, jsonResponse, errorResponse, addAuditLog } from '@/app/api/_store/db';
 
 type Ctx = { params: Promise<{ clubId: string }> };
 
@@ -39,6 +39,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   if (body.activeMemberLimit !== undefined) club.activeMemberLimit = body.activeMemberLimit;
   club.updatedAt = new Date().toISOString();
 
+  addAuditLog(db, { clubId, action: 'CLUB_UPDATED', eventCategory: 'CLUB', targetType: 'CLUB', targetId: clubId, actorUserId: user.id, result: 'SUCCESS', statusCode: 200 });
   saveDb(db);
   return jsonResponse(club);
 }
@@ -54,6 +55,8 @@ export async function DELETE(req: NextRequest, ctx: Ctx) {
 
   const membership = db.memberships.find(m => m.clubId === clubId && m.userId === user.id && m.role === 'ADMIN' && m.status === 'ACTIVE');
   if (!membership) return errorResponse(403, 'Admin access required');
+
+  addAuditLog(db, { clubId, action: 'CLUB_DELETED', eventCategory: 'CLUB', targetType: 'CLUB', targetId: clubId, actorUserId: user.id, result: 'SUCCESS', statusCode: 204 });
 
   db.clubs.splice(idx, 1);
   db.memberships = db.memberships.filter(m => m.clubId !== clubId);

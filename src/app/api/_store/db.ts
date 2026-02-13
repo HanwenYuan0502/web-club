@@ -14,6 +14,7 @@ export type DbUser = {
   language: string;
   dateOfBirth?: string;
   gender?: string;
+  avatarUrl?: string;
   referrer?: string;
   createdAt: string;
 };
@@ -53,6 +54,7 @@ export type DbInvite = {
   targetPhone?: string;
   targetEmail?: string;
   status: string;
+  expiresAt?: string;
   createdAt: string;
 };
 
@@ -82,6 +84,39 @@ export type DbToken = {
   revoked: boolean;
 };
 
+export type DbNotification = {
+  id: string;
+  userId: string;
+  type: 'INVITE_RECEIVED' | 'APPLICATION_APPROVED' | 'APPLICATION_REJECTED' | 'MEMBER_JOINED' | 'CLUB_UPDATE' | 'EVENT_CREATED';
+  title: string;
+  body: string;
+  clubId?: string;
+  linkUrl?: string;
+  read: boolean;
+  createdAt: string;
+};
+
+export type DbEvent = {
+  id: string;
+  clubId: string;
+  title: string;
+  description?: string;
+  location?: string;
+  startTime: string;
+  endTime?: string;
+  maxParticipants?: number | null;
+  createdBy: string;
+  createdAt: string;
+};
+
+export type DbEventRegistration = {
+  id: string;
+  eventId: string;
+  userId: string;
+  status: 'REGISTERED' | 'CANCELLED';
+  createdAt: string;
+};
+
 export type DbAuditLog = {
   id: string;
   clubId: string;
@@ -103,6 +138,9 @@ type Database = {
   applications: DbApplication[];
   otps: DbOtp[];
   tokens: DbToken[];
+  notifications: DbNotification[];
+  events: DbEvent[];
+  eventRegistrations: DbEventRegistration[];
   auditLogs: DbAuditLog[];
 };
 
@@ -114,6 +152,9 @@ const EMPTY_DB: Database = {
   applications: [],
   otps: [],
   tokens: [],
+  notifications: [],
+  events: [],
+  eventRegistrations: [],
   auditLogs: [],
 };
 

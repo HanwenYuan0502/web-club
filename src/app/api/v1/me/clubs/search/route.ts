@@ -6,10 +6,14 @@ export async function GET(req: NextRequest) {
   if (!user) return errorResponse(401, 'Unauthorized');
 
   const q = req.nextUrl.searchParams.get('q')?.toLowerCase() || '';
+  const typeFilter = req.nextUrl.searchParams.get('type')?.toUpperCase() || '';
+  const joinModeFilter = req.nextUrl.searchParams.get('joinMode')?.toUpperCase() || '';
   const db = getDb();
 
   const clubs = db.clubs.filter(c => {
     if (q && !c.name.toLowerCase().includes(q) && !c.description?.toLowerCase().includes(q)) return false;
+    if (typeFilter && c.type !== typeFilter) return false;
+    if (joinModeFilter && c.joinMode !== joinModeFilter) return false;
     const membership = db.memberships.find(m => m.userId === user.id && m.clubId === c.id && m.status !== 'REMOVED');
     if (membership) return true;
     if (c.joinMode === 'APPLY_TO_JOIN' && c.isAcceptingNewMembers !== false) return true;

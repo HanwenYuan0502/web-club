@@ -16,6 +16,13 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "BadBuddy Club Portal",
   description: "Club management portal for BadBuddy",
+  manifest: "/manifest.json",
+  themeColor: "#171717",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "BadBuddy",
+  },
 };
 
 export default function RootLayout({

@@ -9,7 +9,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ImageUpload } from '@/components/image-upload';
 import { toast } from 'sonner';
 import { User, Save, Loader2, Phone, Mail, Globe, Calendar, Users2 } from 'lucide-react';
 
@@ -24,6 +25,7 @@ export default function ProfilePage() {
     language: user?.language || 'en',
     gender: user?.gender || '',
     dateOfBirth: user?.dateOfBirth || '',
+    avatarUrl: user?.avatarUrl || '',
   });
 
   const initials = user
@@ -51,11 +53,13 @@ export default function ProfilePage() {
       {/* Profile header */}
       <div className="rounded-xl border bg-gradient-to-r from-primary/5 via-background to-primary/5 p-6">
         <div className="flex items-center gap-4">
-          <Avatar className="h-16 w-16">
-            <AvatarFallback className="bg-primary text-primary-foreground text-xl font-semibold">
-              {initials}
-            </AvatarFallback>
-          </Avatar>
+          <ImageUpload
+            currentUrl={form.avatarUrl}
+            fallback={initials}
+            onUploaded={url => setForm(f => ({ ...f, avatarUrl: url }))}
+            shape="circle"
+            size="lg"
+          />
           <div>
             <h1 className="text-2xl font-bold tracking-tight">{user?.firstName} {user?.lastName}</h1>
             <p className="text-muted-foreground text-sm">{user?.phone}</p>
