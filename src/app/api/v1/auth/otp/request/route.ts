@@ -11,6 +11,15 @@ export async function POST(req: NextRequest) {
 
   const db = getDb();
 
+  // Check context: if login flow, phone must be registered
+  const context = body.context; // 'login' | 'register' | undefined
+  if (context === 'login') {
+    const userExists = db.users.some(u => u.phone === phone);
+    if (!userExists) {
+      return errorResponse(404, 'Phone number not registered. Please register first.');
+    }
+  }
+
   // Rate limit: 1 OTP per 30s per phone
   const recent = db.otps.find(o => o.phone === phone && !o.used && Date.now() - o.createdAt < 30000);
   if (recent) {

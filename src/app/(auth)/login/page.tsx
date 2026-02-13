@@ -41,12 +41,17 @@ function LoginForm() {
     e.preventDefault();
     setLoading(true);
     try {
-      await authApi.requestOtp(phone);
+      await authApi.requestOtp(phone, 'login');
       setStep('otp');
       setCountdown(30);
       toast.success('OTP sent to your phone');
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : 'Failed to send OTP');
+      const msg = err instanceof ApiError ? err.message : 'Failed to send OTP';
+      if (err instanceof ApiError && err.status === 404) {
+        toast.error('Phone number not registered', { description: 'Please register first.' });
+      } else {
+        toast.error(msg);
+      }
     } finally {
       setLoading(false);
     }

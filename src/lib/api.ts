@@ -44,8 +44,8 @@ export const auth = {
   register: (body: RegisterBody) =>
     request<UserProfile>('/v1/auth/register', { method: 'POST', body: { ...body, referrer: REFERRER } }),
 
-  requestOtp: (phone: string) =>
-    request<{ ok: boolean }>('/v1/auth/otp/request', { method: 'POST', body: { phone, referrer: REFERRER } }),
+  requestOtp: (phone: string, context?: 'login' | 'register') =>
+    request<{ ok: boolean }>('/v1/auth/otp/request', { method: 'POST', body: { phone, referrer: REFERRER, context } }),
 
   verifyOtp: (phone: string, code: string) =>
     request<LoginResponse>('/v1/auth/otp/verify', { method: 'POST', body: { phone, code } }),

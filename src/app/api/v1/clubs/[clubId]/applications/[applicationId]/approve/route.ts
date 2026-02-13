@@ -26,6 +26,16 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     db.memberships.push({ id: uuid(), userId: db.applications[idx].userId, clubId, role: 'MEMBER', status: 'ACTIVE', showPhoneToMembers: false, showEmailToMembers: false, createdAt: new Date().toISOString() });
   }
 
+  // Notify the applicant
+  db.notifications = db.notifications || [];
+  const club = db.clubs.find(c => c.id === clubId);
+  db.notifications.push({
+    id: uuid(), userId: db.applications[idx].userId, type: 'APPLICATION_APPROVED',
+    title: 'Application Approved',
+    body: `Your application to join ${club?.name || 'the club'} has been approved!`,
+    clubId, linkUrl: `/clubs/${clubId}`, read: false, createdAt: new Date().toISOString(),
+  });
+
   addAuditLog(db, { clubId, action: 'APPLICATION_APPROVED', eventCategory: 'MEMBER', targetType: 'APPLICATION', targetId: applicationId, actorUserId: user.id, result: 'SUCCESS', statusCode: 200 });
   saveDb(db);
   return jsonResponse(db.applications[idx]);

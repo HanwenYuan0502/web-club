@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { getDb, saveDb, getUserFromToken, jsonResponse, errorResponse } from '@/app/api/_store/db';
+import { getDb, saveDb, getUserFromToken, jsonResponse, errorResponse, addAuditLog } from '@/app/api/_store/db';
 
 type Ctx = { params: Promise<{ clubId: string }> };
 
@@ -33,6 +33,7 @@ export async function DELETE(req: NextRequest, ctx: Ctx) {
   }
 
   db.memberships[idx].status = 'REMOVED';
+  addAuditLog(db, { clubId, action: 'MEMBER_LEFT', eventCategory: 'MEMBER', targetType: 'MEMBER', targetId: m.id, actorUserId: user.id, result: 'SUCCESS', statusCode: 204 });
   saveDb(db);
   return new Response(null, { status: 204 });
 }

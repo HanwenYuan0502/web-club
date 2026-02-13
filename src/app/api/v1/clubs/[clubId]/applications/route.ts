@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { getDb, saveDb, uuid, getUserFromToken, jsonResponse, errorResponse } from '@/app/api/_store/db';
+import { getDb, saveDb, uuid, getUserFromToken, jsonResponse, errorResponse, addAuditLog } from '@/app/api/_store/db';
 
 type Ctx = { params: Promise<{ clubId: string }> };
 
@@ -37,6 +37,20 @@ export async function POST(req: NextRequest, ctx: Ctx) {
 
   const app = { id: uuid(), clubId, userId: user.id, status: 'PENDING' as const, createdAt: new Date().toISOString() };
   db.applications.push(app);
+
+  // Notify club admins
+  db.notifications = db.notifications || [];
+  const admins = db.memberships.filter(m => m.clubId === clubId && m.role === 'ADMIN' && m.status === 'ACTIVE');
+  for (const admin of admins) {
+    db.notifications.push({
+      id: uuid(), userId: admin.userId, type: 'MEMBER_JOINED',
+      title: 'New Application',
+      body: `${user.firstName || user.phone} applied to join ${club.name}`,
+      clubId, linkUrl: `/clubs/${clubId}?tab=applications`, read: false, createdAt: new Date().toISOString(),
+    });
+  }
+
+  addAuditLog(db, { clubId, action: 'APPLICATION_SUBMITTED', eventCategory: 'MEMBER', targetType: 'APPLICATION', targetId: app.id, actorUserId: user.id, result: 'SUCCESS', statusCode: 201 });
   saveDb(db);
   return jsonResponse(app, 201);
 }

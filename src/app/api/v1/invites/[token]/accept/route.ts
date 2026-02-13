@@ -62,6 +62,18 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     addAuditLog(db, { clubId: invite.clubId, action: 'INVITE_ACCEPTED', eventCategory: 'MEMBER', targetType: 'INVITE', targetId: invite.id, actorUserId: user.id, result: 'SUCCESS', statusCode: 200 });
   }
 
+  // Notify club admins about new member
+  db.notifications = db.notifications || [];
+  const admins = db.memberships.filter(m => m.clubId === invite.clubId && m.role === 'ADMIN' && m.status === 'ACTIVE');
+  for (const admin of admins) {
+    db.notifications.push({
+      id: uuid(), userId: admin.userId, type: 'MEMBER_JOINED',
+      title: 'New Member Joined',
+      body: `${user.firstName || user.phone} joined ${club?.name || 'your club'} via invite`,
+      clubId: invite.clubId, linkUrl: `/clubs/${invite.clubId}?tab=members`, read: false, createdAt: new Date().toISOString(),
+    });
+  }
+
   saveDb(db);
   return jsonResponse({ ok: true });
 }
