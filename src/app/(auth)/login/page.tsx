@@ -25,9 +25,11 @@ function LoginForm() {
   const [countdown, setCountdown] = useState(0);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
+  const redirect = searchParams.get('redirect') || '/dashboard';
+
   useEffect(() => {
-    if (isAuthenticated) router.replace('/dashboard');
-  }, [isAuthenticated, router]);
+    if (isAuthenticated) router.replace(redirect);
+  }, [isAuthenticated, router, redirect]);
 
   useEffect(() => {
     if (countdown <= 0) return;
@@ -70,8 +72,6 @@ function LoginForm() {
       inputRefs.current[index - 1]?.focus();
     }
   };
-
-  const redirect = searchParams.get('redirect') || '/dashboard';
 
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { getDb, saveDb, uuid, getUserFromToken, jsonResponse, errorResponse } from '@/app/api/_store/db';
+import { getDb, saveDb, uuid, getUserFromToken, jsonResponse, errorResponse, addAuditLog } from '@/app/api/_store/db';
 
 type Ctx = { params: Promise<{ token: string }> };
 
@@ -29,9 +29,16 @@ export async function POST(req: NextRequest, ctx: Ctx) {
 
     // Consume targeted invite
     invite.status = 'CONSUMED';
+    addAuditLog(db, { clubId: invite.clubId, action: 'INVITE_ACCEPTED', eventCategory: 'MEMBER', targetType: 'INVITE', targetId: invite.id, actorUserId: user.id, result: 'SUCCESS', statusCode: 200 });
   } else {
-    // General invite → create application
-    db.applications.push({ id: uuid(), clubId: invite.clubId, userId: user.id, status: 'PENDING', createdAt: new Date().toISOString() });
+    // General invite → create membership directly for general invites too
+    const existing = db.memberships.find(m => m.clubId === invite.clubId && m.userId === user.id);
+    if (existing) {
+      existing.status = 'ACTIVE';
+    } else {
+      db.memberships.push({ id: uuid(), userId: user.id, clubId: invite.clubId, role: 'MEMBER', status: 'ACTIVE', showPhoneToMembers: false, showEmailToMembers: false, createdAt: new Date().toISOString() });
+    }
+    addAuditLog(db, { clubId: invite.clubId, action: 'INVITE_ACCEPTED', eventCategory: 'MEMBER', targetType: 'INVITE', targetId: invite.id, actorUserId: user.id, result: 'SUCCESS', statusCode: 200 });
   }
 
   saveDb(db);

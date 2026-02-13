@@ -55,17 +55,19 @@ export default function CreateClubPage() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <div className="mb-6">
-        <Link href="/dashboard" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground">
+    <div className="max-w-2xl mx-auto space-y-6">
+      <div className="rounded-xl border bg-gradient-to-r from-primary/5 via-background to-primary/5 p-6">
+        <Link href="/dashboard" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-3">
           <ArrowLeft className="mr-1 h-4 w-4" />Back to Dashboard
         </Link>
+        <h1 className="text-2xl font-bold tracking-tight">Create New Club</h1>
+        <p className="text-muted-foreground mt-1">Set up your badminton club. You&apos;ll be the admin.</p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Create New Club</CardTitle>
-          <CardDescription>Set up your badminton club. You will be the admin.</CardDescription>
+          <CardTitle className="text-lg">Club Details</CardTitle>
+          <CardDescription>Fill in the information below to create your club.</CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-6">

@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { getDb, saveDb, getUserFromToken, jsonResponse, errorResponse } from '@/app/api/_store/db';
+import { getDb, saveDb, getUserFromToken, jsonResponse, errorResponse, addAuditLog } from '@/app/api/_store/db';
 
 type Ctx = { params: Promise<{ clubId: string; applicationId: string }> };
 
@@ -21,6 +21,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   db.applications[idx].denialReason = body.denialReason || 'OTHER';
   db.applications[idx].denialNotes = body.denialNotes;
 
+  addAuditLog(db, { clubId, action: 'APPLICATION_REJECTED', eventCategory: 'MEMBER', targetType: 'APPLICATION', targetId: applicationId, actorUserId: user.id, result: 'SUCCESS', statusCode: 200 });
   saveDb(db);
   return jsonResponse(db.applications[idx]);
 }

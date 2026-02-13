@@ -82,6 +82,19 @@ export type DbToken = {
   revoked: boolean;
 };
 
+export type DbAuditLog = {
+  id: string;
+  clubId: string;
+  action: string;
+  eventCategory: string;
+  targetType?: string;
+  targetId?: string;
+  actorUserId?: string;
+  result: string;
+  statusCode: number;
+  createdAt: string;
+};
+
 type Database = {
   users: DbUser[];
   clubs: DbClub[];
@@ -90,6 +103,7 @@ type Database = {
   applications: DbApplication[];
   otps: DbOtp[];
   tokens: DbToken[];
+  auditLogs: DbAuditLog[];
 };
 
 const EMPTY_DB: Database = {
@@ -100,6 +114,7 @@ const EMPTY_DB: Database = {
   applications: [],
   otps: [],
   tokens: [],
+  auditLogs: [],
 };
 
 function readDb(): Database {
@@ -170,4 +185,12 @@ export function jsonResponse(data: unknown, status = 200) {
 
 export function errorResponse(status: number, message: string) {
   return Response.json({ statusCode: status, message }, { status });
+}
+
+export function addAuditLog(db: Database, entry: Omit<DbAuditLog, 'id' | 'createdAt'>) {
+  db.auditLogs.push({
+    ...entry,
+    id: uuid(),
+    createdAt: new Date().toISOString(),
+  });
 }

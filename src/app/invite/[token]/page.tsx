@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { invites as invitesApi, ApiError, type InvitePreview } from '@/lib/api';
@@ -24,6 +24,7 @@ export default function InvitePage() {
   const [accepting, setAccepting] = useState(false);
   const [error, setError] = useState('');
   const [accepted, setAccepted] = useState(false);
+  const autoAcceptedRef = useRef(false);
 
   useEffect(() => {
     const load = async () => {
@@ -41,7 +42,8 @@ export default function InvitePage() {
 
   // Auto-accept on login if redirected from this page
   useEffect(() => {
-    if (isAuthenticated && preview && !accepted && !accepting) {
+    if (isAuthenticated && preview && !accepted && !accepting && !autoAcceptedRef.current) {
+      autoAcceptedRef.current = true;
       handleAccept();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

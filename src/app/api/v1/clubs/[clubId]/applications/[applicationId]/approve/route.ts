@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { getDb, saveDb, uuid, getUserFromToken, jsonResponse, errorResponse } from '@/app/api/_store/db';
+import { getDb, saveDb, uuid, getUserFromToken, jsonResponse, errorResponse, addAuditLog } from '@/app/api/_store/db';
 
 type Ctx = { params: Promise<{ clubId: string; applicationId: string }> };
 
@@ -26,6 +26,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     db.memberships.push({ id: uuid(), userId: db.applications[idx].userId, clubId, role: 'MEMBER', status: 'ACTIVE', showPhoneToMembers: false, showEmailToMembers: false, createdAt: new Date().toISOString() });
   }
 
+  addAuditLog(db, { clubId, action: 'APPLICATION_APPROVED', eventCategory: 'MEMBER', targetType: 'APPLICATION', targetId: applicationId, actorUserId: user.id, result: 'SUCCESS', statusCode: 200 });
   saveDb(db);
   return jsonResponse(db.applications[idx]);
 }
