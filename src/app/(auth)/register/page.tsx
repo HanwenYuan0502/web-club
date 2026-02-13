@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { auth as authApi, ApiError, type RegisterBody } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
@@ -25,8 +25,10 @@ type Step = typeof STEPS[number]['id'];
 const E164_REGEX = /^\+[1-9]\d{6,14}$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export default function RegisterPage() {
+function RegisterForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirect = searchParams.get('redirect') || '/dashboard';
   const { login } = useAuth();
   const [step, setStep] = useState<Step>('phone');
   const [loading, setLoading] = useState(false);
@@ -174,7 +176,7 @@ export default function RegisterPage() {
     try {
       await login(form.phone.trim(), code);
       toast.success('Welcome to BadBuddy!');
-      router.push('/dashboard');
+      router.push(redirect);
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.message.toLowerCase().includes('expired')) {
@@ -453,5 +455,13 @@ export default function RegisterPage() {
         )}
       </Card>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center py-20"><div className="animate-pulse text-muted-foreground">Loading...</div></div>}>
+      <RegisterForm />
+    </Suspense>
   );
 }

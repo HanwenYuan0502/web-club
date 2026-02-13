@@ -30,8 +30,10 @@ import { toast } from 'sonner';
 import {
   ArrowLeft, Users, Mail, Link2, ClipboardCheck, ScrollText,
   Settings, UserPlus, Copy, Trash2, Check, X, Shield, LogOut,
-  ChevronRight, RefreshCw,
+  ChevronRight, RefreshCw, Share2, MessageCircle, Smartphone, ExternalLink,
 } from 'lucide-react';
+import { Badminton } from '@/components/icons';
+import { PhoneInput } from '@/components/phone-input';
 
 export default function ClubDetailPage() {
   const params = useParams();
@@ -114,12 +116,13 @@ export default function ClubDetailPage() {
 
   useEffect(() => {
     if (!loading && club) {
+      if (activeTab === 'overview' && isAdmin) loadInvites();
       if (activeTab === 'members') loadMembers();
       if (activeTab === 'invites') loadInvites();
       if (activeTab === 'applications') loadApplications();
       if (activeTab === 'audit') loadAuditLogs();
     }
-  }, [activeTab, loading, club, loadMembers, loadInvites, loadApplications, loadAuditLogs]);
+  }, [activeTab, loading, club, isAdmin, loadMembers, loadInvites, loadApplications, loadAuditLogs]);
 
   if (loading) {
     return (
@@ -134,27 +137,32 @@ export default function ClubDetailPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <Link href="/dashboard" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-2">
-            <ArrowLeft className="mr-1 h-4 w-4" />Back to Dashboard
-          </Link>
-          <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-bold">{club.name}</h1>
-            {club.type && (
-              <Badge variant={club.type === 'COMPETITIVE' ? 'default' : 'secondary'}>
-                {club.type}
-              </Badge>
-            )}
-            {isAdmin && <Badge variant="outline" className="text-xs"><Shield className="mr-1 h-3 w-3" />Admin</Badge>}
+      <div className="rounded-xl border bg-gradient-to-r from-primary/5 via-background to-primary/5 p-6">
+        <Link href="/dashboard" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-3">
+          <ArrowLeft className="mr-1 h-4 w-4" />Back to Dashboard
+        </Link>
+        <div className="flex items-start gap-4">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
+            <Badminton className="h-7 w-7" />
           </div>
-          {club.description && <p className="text-muted-foreground mt-2">{club.description}</p>}
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-2xl md:text-3xl font-bold tracking-tight">{club.name}</h1>
+              {club.type && (
+                <Badge variant={club.type === 'COMPETITIVE' ? 'default' : 'secondary'} className="text-xs">
+                  {club.type}
+                </Badge>
+              )}
+              {isAdmin && <Badge variant="outline" className="text-xs border-primary/30 text-primary"><Shield className="mr-1 h-3 w-3" />Admin</Badge>}
+            </div>
+            {club.description && <p className="text-muted-foreground mt-1 line-clamp-2">{club.description}</p>}
+          </div>
         </div>
       </div>
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
+        <TabsList className="w-full justify-start overflow-x-auto">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="members"><Users className="mr-1 h-3.5 w-3.5" />Members</TabsTrigger>
           {isAdmin && <TabsTrigger value="invites"><Link2 className="mr-1 h-3.5 w-3.5" />Invites</TabsTrigger>}
@@ -165,7 +173,7 @@ export default function ClubDetailPage() {
 
         {/* Overview Tab */}
         <TabsContent value="overview">
-          <OverviewTab club={club} myMembership={myMembership} getToken={getToken} clubId={clubId} onUpdate={loadClub} router={router} />
+          <OverviewTab club={club} myMembership={myMembership} isAdmin={isAdmin} invitesList={invitesList} getToken={getToken} clubId={clubId} onUpdate={loadClub} onLoadInvites={loadInvites} router={router} />
         </TabsContent>
 
         {/* Members Tab */}
@@ -186,6 +194,7 @@ export default function ClubDetailPage() {
             invitesList={invitesList}
             getToken={getToken}
             clubId={clubId}
+            clubName={club.name}
             onRefresh={loadInvites}
           />
         </TabsContent>
@@ -220,10 +229,13 @@ export default function ClubDetailPage() {
 }
 
 // ─── Overview Tab ───
-function OverviewTab({ club, myMembership, getToken, clubId, onUpdate, router }: {
-  club: Club; myMembership: Member | null; getToken: () => Promise<string | null>;
-  clubId: string; onUpdate: () => void; router: ReturnType<typeof useRouter>;
+function OverviewTab({ club, myMembership, isAdmin, invitesList, getToken, clubId, onUpdate, onLoadInvites, router }: {
+  club: Club; myMembership: Member | null; isAdmin: boolean; invitesList: Invite[];
+  getToken: () => Promise<string | null>;
+  clubId: string; onUpdate: () => void; onLoadInvites: () => void; router: ReturnType<typeof useRouter>;
 }) {
+  const [creatingInvite, setCreatingInvite] = useState(false);
+
   const handleLeave = async () => {
     if (!confirm('Are you sure you want to leave this club?')) return;
     const token = await getToken();
@@ -237,55 +249,127 @@ function OverviewTab({ club, myMembership, getToken, clubId, onUpdate, router }:
     }
   };
 
-  return (
-    <div className="grid gap-6 md:grid-cols-2">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Club Details</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <InfoRow label="Type" value={club.type || 'N/A'} />
-          <InfoRow label="Join Mode" value={club.joinMode === 'INVITE_ONLY' ? 'Invite Only' : 'Open to Applications'} />
-          <InfoRow label="Accepting Members" value={club.isAcceptingNewMembers ? 'Yes' : 'No'} />
-          <InfoRow label="Member Limit" value={club.activeMemberLimit ? String(club.activeMemberLimit) : 'Unlimited'} />
-          {club.levelsAccepted && club.levelsAccepted.length > 0 && (
-            <div>
-              <span className="text-sm text-muted-foreground">Levels:</span>
-              <div className="flex flex-wrap gap-1 mt-1">
-                {club.levelsAccepted.map(l => <Badge key={l} variant="outline" className="text-xs">{l}</Badge>)}
-              </div>
-            </div>
-          )}
-          {club.rules && (
-            <div>
-              <span className="text-sm text-muted-foreground">Rules:</span>
-              <p className="text-sm mt-1 whitespace-pre-wrap">{club.rules}</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+  const handleCreateGeneralInvite = async () => {
+    const token = await getToken();
+    if (!token) return;
+    setCreatingInvite(true);
+    try {
+      await invitesApi.create(token, clubId);
+      toast.success('Invite link created!');
+      onLoadInvites();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : 'Failed to create invite');
+    } finally {
+      setCreatingInvite(false);
+    }
+  };
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">My Membership</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {myMembership ? (
-            <>
-              <InfoRow label="Role" value={myMembership.role} />
-              <InfoRow label="Status" value={myMembership.status} />
-              <InfoRow label="Phone Visible" value={myMembership.showPhoneToMembers ? 'Yes' : 'No'} />
-              <InfoRow label="Email Visible" value={myMembership.showEmailToMembers ? 'Yes' : 'No'} />
-              <Separator />
-              <Button variant="destructive" size="sm" onClick={handleLeave}>
-                <LogOut className="mr-2 h-4 w-4" />Leave Club
+  const activeGeneralInvite = invitesList.find(i => i.status === 'ACTIVE' && !i.targetPhone && !i.targetEmail);
+  const inviteUrl = activeGeneralInvite ? `${typeof window !== 'undefined' ? window.location.origin : ''}/invite/${activeGeneralInvite.token}` : '';
+
+  const shareInvite = (method: 'copy' | 'whatsapp' | 'sms') => {
+    if (!inviteUrl) return;
+    const text = `Join ${club.name} on BadBuddy! ${inviteUrl}`;
+    if (method === 'copy') {
+      navigator.clipboard.writeText(inviteUrl);
+      toast.success('Invite link copied!');
+    } else if (method === 'whatsapp') {
+      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+    } else if (method === 'sms') {
+      window.open(`sms:?body=${encodeURIComponent(text)}`, '_blank');
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Invite link card for admins */}
+      {isAdmin && (
+        <Card className="border-primary/20 bg-primary/[0.02]">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Share2 className="h-4 w-4 text-primary" />
+              Invite People
+            </CardTitle>
+            <CardDescription>Share this link to invite people to your club</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {activeGeneralInvite ? (
+              <>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 rounded-md border bg-muted/50 px-3 py-2 text-sm font-mono truncate select-all">
+                    {inviteUrl}
+                  </div>
+                  <Button size="sm" variant="outline" onClick={() => shareInvite('copy')}>
+                    <Copy className="h-3.5 w-3.5 mr-1" />Copy
+                  </Button>
+                </div>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" className="text-green-600 border-green-200 hover:bg-green-50" onClick={() => shareInvite('whatsapp')}>
+                    <MessageCircle className="h-3.5 w-3.5 mr-1" />WhatsApp
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => shareInvite('sms')}>
+                    <Smartphone className="h-3.5 w-3.5 mr-1" />SMS
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <Button onClick={handleCreateGeneralInvite} disabled={creatingInvite}>
+                <Link2 className="mr-2 h-4 w-4" />{creatingInvite ? 'Creating...' : 'Generate Invite Link'}
               </Button>
-            </>
-          ) : (
-            <p className="text-muted-foreground text-sm">No membership info available</p>
-          )}
-        </CardContent>
-      </Card>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Club Details</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <InfoRow label="Type" value={club.type || 'N/A'} />
+            <InfoRow label="Join Mode" value={club.joinMode === 'INVITE_ONLY' ? 'Invite Only' : 'Open to Applications'} />
+            <InfoRow label="Accepting Members" value={club.isAcceptingNewMembers ? 'Yes' : 'No'} />
+            <InfoRow label="Member Limit" value={club.activeMemberLimit ? String(club.activeMemberLimit) : 'Unlimited'} />
+            {club.levelsAccepted && club.levelsAccepted.length > 0 && (
+              <div>
+                <span className="text-sm text-muted-foreground">Levels:</span>
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {club.levelsAccepted.map(l => <Badge key={l} variant="outline" className="text-xs">{l}</Badge>)}
+                </div>
+              </div>
+            )}
+            {club.rules && (
+              <div>
+                <span className="text-sm text-muted-foreground">Rules:</span>
+                <p className="text-sm mt-1 whitespace-pre-wrap">{club.rules}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">My Membership</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {myMembership ? (
+              <>
+                <InfoRow label="Role" value={myMembership.role} />
+                <InfoRow label="Status" value={myMembership.status} />
+                <InfoRow label="Phone Visible" value={myMembership.showPhoneToMembers ? 'Yes' : 'No'} />
+                <InfoRow label="Email Visible" value={myMembership.showEmailToMembers ? 'Yes' : 'No'} />
+                <Separator />
+                <Button variant="destructive" size="sm" onClick={handleLeave}>
+                  <LogOut className="mr-2 h-4 w-4" />Leave Club
+                </Button>
+              </>
+            ) : (
+              <p className="text-muted-foreground text-sm">No membership info available</p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
@@ -427,13 +511,14 @@ function MembersTab({ members, isAdmin, currentUserId, getToken, clubId, onRefre
 }
 
 // ─── Invites Tab ───
-function InvitesTab({ invitesList, getToken, clubId, onRefresh }: {
-  invitesList: Invite[]; getToken: () => Promise<string | null>; clubId: string; onRefresh: () => void;
+function InvitesTab({ invitesList, getToken, clubId, clubName, onRefresh }: {
+  invitesList: Invite[]; getToken: () => Promise<string | null>; clubId: string; clubName: string; onRefresh: () => void;
 }) {
   const [showCreate, setShowCreate] = useState(false);
   const [targetPhone, setTargetPhone] = useState('');
   const [targetEmail, setTargetEmail] = useState('');
   const [creating, setCreating] = useState(false);
+  const [shareMenuInvite, setShareMenuInvite] = useState<string | null>(null);
 
   const handleCreate = async (targeted: boolean) => {
     const token = await getToken();
@@ -441,7 +526,7 @@ function InvitesTab({ invitesList, getToken, clubId, onRefresh }: {
     setCreating(true);
     try {
       const body = targeted ? { targetPhone: targetPhone || undefined, targetEmail: targetEmail || undefined } : undefined;
-      const inv = await invitesApi.create(token, clubId, body);
+      await invitesApi.create(token, clubId, body);
       toast.success('Invite created!');
       setShowCreate(false);
       setTargetPhone('');
@@ -466,96 +551,134 @@ function InvitesTab({ invitesList, getToken, clubId, onRefresh }: {
     }
   };
 
-  const copyLink = (inviteToken: string) => {
-    const url = `${window.location.origin}/invite/${inviteToken}`;
-    navigator.clipboard.writeText(url);
-    toast.success('Invite link copied!');
+  const getInviteUrl = (inviteToken: string) => `${window.location.origin}/invite/${inviteToken}`;
+
+  const shareInvite = (inviteToken: string, method: 'copy' | 'whatsapp' | 'sms') => {
+    const url = getInviteUrl(inviteToken);
+    const text = `Join ${clubName} on BadBuddy! ${url}`;
+    if (method === 'copy') {
+      navigator.clipboard.writeText(url);
+      toast.success('Invite link copied!');
+    } else if (method === 'whatsapp') {
+      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+    } else if (method === 'sms') {
+      window.open(`sms:?body=${encodeURIComponent(text)}`, '_blank');
+    }
+    setShareMenuInvite(null);
   };
 
+  const activeInvites = invitesList.filter(i => i.status === 'ACTIVE');
+  const otherInvites = invitesList.filter(i => i.status !== 'ACTIVE');
+
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <div>
-          <CardTitle className="text-lg">Invites ({invitesList.length})</CardTitle>
-          <CardDescription>Manage club invitations</CardDescription>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={onRefresh}>
-            <RefreshCw className="mr-1 h-3.5 w-3.5" />Refresh
-          </Button>
-          <Dialog open={showCreate} onOpenChange={setShowCreate}>
-            <DialogTrigger asChild>
-              <Button size="sm"><UserPlus className="mr-1 h-3.5 w-3.5" />New Invite</Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Create Invite</DialogTitle>
-                <DialogDescription>Create a general or targeted invite link</DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4">
-                <Button className="w-full" onClick={() => handleCreate(false)} disabled={creating}>
-                  <Link2 className="mr-2 h-4 w-4" />Create General Invite Link
-                </Button>
-                <Separator />
-                <p className="text-sm text-muted-foreground">Or send a targeted invite:</p>
-                <div className="space-y-2">
-                  <Label>Target Phone</Label>
-                  <Input placeholder="+1234567890" value={targetPhone} onChange={e => setTargetPhone(e.target.value)} />
+    <div className="space-y-4">
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="text-lg">Invites ({invitesList.length})</CardTitle>
+            <CardDescription>Manage club invitations</CardDescription>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={onRefresh}>
+              <RefreshCw className="mr-1 h-3.5 w-3.5" />Refresh
+            </Button>
+            <Dialog open={showCreate} onOpenChange={setShowCreate}>
+              <DialogTrigger asChild>
+                <Button size="sm"><UserPlus className="mr-1 h-3.5 w-3.5" />New Invite</Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Create Invite</DialogTitle>
+                  <DialogDescription>Create a general or targeted invite link</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <Button className="w-full" onClick={() => handleCreate(false)} disabled={creating}>
+                    <Link2 className="mr-2 h-4 w-4" />Create General Invite Link
+                  </Button>
+                  <Separator />
+                  <p className="text-sm text-muted-foreground">Or send a targeted invite to a specific person:</p>
+                  <div className="space-y-2">
+                    <Label>Target Phone</Label>
+                    <PhoneInput value={targetPhone} onChange={setTargetPhone} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Target Email</Label>
+                    <Input placeholder="user@example.com" value={targetEmail} onChange={e => setTargetEmail(e.target.value)} />
+                  </div>
+                  <Button className="w-full" variant="secondary" onClick={() => handleCreate(true)} disabled={creating || (!targetPhone && !targetEmail)}>
+                    <Mail className="mr-2 h-4 w-4" />Send Targeted Invite
+                  </Button>
                 </div>
-                <div className="space-y-2">
-                  <Label>Target Email</Label>
-                  <Input placeholder="user@example.com" value={targetEmail} onChange={e => setTargetEmail(e.target.value)} />
-                </div>
-                <Button className="w-full" variant="secondary" onClick={() => handleCreate(true)} disabled={creating || (!targetPhone && !targetEmail)}>
-                  <Mail className="mr-2 h-4 w-4" />Send Targeted Invite
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Token</TableHead>
-              <TableHead>Target</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Created</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {invitesList.length === 0 ? (
-              <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">No invites</TableCell></TableRow>
-            ) : (
-              invitesList.map(inv => (
-                <TableRow key={inv.id}>
-                  <TableCell className="font-mono text-xs max-w-[120px] truncate">{inv.token}</TableCell>
-                  <TableCell className="text-sm">
-                    {inv.targetPhone || inv.targetEmail || <span className="text-muted-foreground">General</span>}
-                  </TableCell>
-                  <TableCell><Badge variant="outline" className="text-xs">{inv.status || 'ACTIVE'}</Badge></TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
-                    {inv.createdAt ? new Date(inv.createdAt).toLocaleDateString() : '—'}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex gap-1 justify-end">
-                      <Button variant="ghost" size="sm" onClick={() => copyLink(inv.token)}>
-                        <Copy className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button variant="ghost" size="sm" className="text-destructive" onClick={() => handleRevoke(inv.id)}>
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Type</TableHead>
+                <TableHead>Target</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Created</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {invitesList.length === 0 ? (
+                <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">No invites yet. Create one to start inviting people.</TableCell></TableRow>
+              ) : (
+                [...activeInvites, ...otherInvites].map(inv => (
+                  <TableRow key={inv.id} className={inv.status !== 'ACTIVE' ? 'opacity-50' : ''}>
+                    <TableCell className="text-sm font-medium">
+                      {inv.targetPhone || inv.targetEmail ? (
+                        <Badge variant="secondary" className="text-xs"><Mail className="mr-1 h-3 w-3" />Targeted</Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-xs"><Link2 className="mr-1 h-3 w-3" />General</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {inv.targetPhone || inv.targetEmail || <span className="text-muted-foreground">Anyone with link</span>}
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={inv.status === 'ACTIVE' ? 'default' : inv.status === 'CONSUMED' ? 'secondary' : 'destructive'}
+                        className="text-xs"
+                      >
+                        {inv.status || 'ACTIVE'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {inv.createdAt ? new Date(inv.createdAt).toLocaleDateString() : '—'}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex gap-1 justify-end">
+                        {inv.status === 'ACTIVE' && (
+                          <>
+                            <Button variant="ghost" size="sm" title="Copy link" onClick={() => shareInvite(inv.token, 'copy')}>
+                              <Copy className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="sm" title="Share via WhatsApp" className="text-green-600" onClick={() => shareInvite(inv.token, 'whatsapp')}>
+                              <MessageCircle className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="sm" title="Share via SMS" onClick={() => shareInvite(inv.token, 'sms')}>
+                              <Smartphone className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="sm" className="text-destructive" title="Revoke" onClick={() => handleRevoke(inv.id)}>
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 

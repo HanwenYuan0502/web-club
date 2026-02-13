@@ -71,6 +71,8 @@ function LoginForm() {
     }
   };
 
+  const redirect = searchParams.get('redirect') || '/dashboard';
+
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     const code = otpDigits.join('');
@@ -79,7 +81,7 @@ function LoginForm() {
     try {
       await login(phone, code);
       toast.success('Login successful!');
-      router.push('/dashboard');
+      router.push(redirect);
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : 'Invalid OTP');
       setOtpDigits(['', '', '', '', '', '']);

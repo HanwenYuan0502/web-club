@@ -4,15 +4,16 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 import { clubs as clubsApi, me as meApi, type Club } from '@/lib/api';
+import { Badminton } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, Users, Shield, MapPin } from 'lucide-react';
+import { Plus, Search, Users, Shield, MapPin, ArrowRight, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function DashboardPage() {
-  const { getToken } = useAuth();
+  const { getToken, user } = useAuth();
   const [myClubs, setMyClubs] = useState<Club[]>([]);
   const [searchResults, setSearchResults] = useState<Club[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -49,16 +50,24 @@ export default function DashboardPage() {
     }
   };
 
+  const greeting = user?.firstName ? `Welcome back, ${user.firstName}` : 'Welcome back';
+
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">My Clubs</h1>
-          <p className="text-muted-foreground mt-1">Manage your badminton clubs</p>
+      {/* Hero header */}
+      <div className="rounded-xl border bg-gradient-to-r from-primary/5 via-background to-primary/5 p-6 md:p-8">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">{greeting}</h1>
+            <p className="text-muted-foreground mt-1">Manage your badminton clubs and memberships</p>
+          </div>
+          <Button asChild size="lg" className="hidden sm:inline-flex">
+            <Link href="/clubs/new"><Plus className="mr-2 h-4 w-4" />Create Club</Link>
+          </Button>
+          <Button asChild size="icon" className="sm:hidden shrink-0">
+            <Link href="/clubs/new"><Plus className="h-4 w-4" /></Link>
+          </Button>
         </div>
-        <Button asChild>
-          <Link href="/clubs/new"><Plus className="mr-2 h-4 w-4" />Create Club</Link>
-        </Button>
       </div>
 
       {/* Search */}
@@ -81,7 +90,10 @@ export default function DashboardPage() {
       {/* Search Results */}
       {searchResults.length > 0 && (
         <div className="space-y-3">
-          <h2 className="text-lg font-semibold">Search Results</h2>
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <Search className="h-4 w-4 text-muted-foreground" />
+            Search Results ({searchResults.length})
+          </h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {searchResults.map(club => (
               <ClubCard key={club.id} club={club} />
@@ -91,71 +103,93 @@ export default function DashboardPage() {
       )}
 
       {/* My Clubs */}
-      {loading ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {[1, 2, 3].map(i => (
-            <Card key={i} className="animate-pulse">
-              <CardHeader><div className="h-5 bg-muted rounded w-2/3" /><div className="h-3 bg-muted rounded w-1/2 mt-2" /></CardHeader>
-              <CardContent><div className="h-4 bg-muted rounded w-1/3" /></CardContent>
-            </Card>
-          ))}
-        </div>
-      ) : myClubs.length === 0 ? (
-        <Card className="border-dashed">
-          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-            <Users className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold">No clubs yet</h3>
-            <p className="text-muted-foreground mt-1">Create a club or search for one to join</p>
-            <Button className="mt-4" asChild>
-              <Link href="/clubs/new"><Plus className="mr-2 h-4 w-4" />Create Club</Link>
-            </Button>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {myClubs.map(club => (
-            <ClubCard key={club.id} club={club} />
-          ))}
-        </div>
-      )}
+      <div className="space-y-4">
+        <h2 className="text-lg font-semibold flex items-center gap-2">
+          <Users className="h-4 w-4 text-muted-foreground" />
+          My Clubs {!loading && `(${myClubs.length})`}
+        </h2>
+
+        {loading ? (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {[1, 2, 3].map(i => (
+              <Card key={i} className="animate-pulse">
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-lg bg-muted" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-4 bg-muted rounded w-2/3" />
+                      <div className="h-3 bg-muted rounded w-1/2" />
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent><div className="h-4 bg-muted rounded w-1/3" /></CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : myClubs.length === 0 ? (
+          <Card className="border-dashed border-2">
+            <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+                <Badminton className="h-8 w-8 text-primary" />
+              </div>
+              <h3 className="text-lg font-semibold">No clubs yet</h3>
+              <p className="text-muted-foreground mt-1 max-w-sm">Create your own badminton club or search for one to join</p>
+              <div className="flex gap-3 mt-6">
+                <Button asChild>
+                  <Link href="/clubs/new"><Plus className="mr-2 h-4 w-4" />Create Club</Link>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {myClubs.map(club => (
+              <ClubCard key={club.id} club={club} />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
 function ClubCard({ club }: { club: Club }) {
   return (
-    <Link href={`/clubs/${club.id}`}>
-      <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
-        <CardHeader>
-          <div className="flex items-start justify-between">
-            <CardTitle className="text-lg line-clamp-1">{club.name}</CardTitle>
+    <Link href={`/clubs/${club.id}`} className="group">
+      <Card className="h-full transition-all duration-200 group-hover:shadow-md group-hover:border-primary/20 group-hover:-translate-y-0.5">
+        <CardHeader className="pb-3">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+              <Badminton className="h-5 w-5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <CardTitle className="text-base line-clamp-1 flex items-center gap-2">
+                {club.name}
+                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+              </CardTitle>
+              {club.description && (
+                <CardDescription className="line-clamp-2 mt-0.5 text-xs">{club.description}</CardDescription>
+              )}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <div className="flex flex-wrap gap-1.5">
             {club.type && (
-              <Badge variant={club.type === 'COMPETITIVE' ? 'default' : 'secondary'} className="shrink-0 ml-2">
-                {club.type === 'COMPETITIVE' ? <Shield className="mr-1 h-3 w-3" /> : null}
+              <Badge variant={club.type === 'COMPETITIVE' ? 'default' : 'secondary'} className="text-[10px] px-1.5 py-0">
+                {club.type === 'COMPETITIVE' ? <Shield className="mr-0.5 h-2.5 w-2.5" /> : null}
                 {club.type}
               </Badge>
             )}
-          </div>
-          {club.description && (
-            <CardDescription className="line-clamp-2">{club.description}</CardDescription>
-          )}
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
             {club.joinMode && (
-              <Badge variant="outline" className="text-xs">
-                {club.joinMode === 'INVITE_ONLY' ? 'Invite Only' : 'Open to Apply'}
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                {club.joinMode === 'INVITE_ONLY' ? 'Invite Only' : 'Open'}
               </Badge>
             )}
             {club.levelsAccepted && club.levelsAccepted.length > 0 && (
-              <Badge variant="outline" className="text-xs">
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0">
                 {club.levelsAccepted.join(', ')}
               </Badge>
-            )}
-            {club.location && (
-              <span className="flex items-center gap-1">
-                <MapPin className="h-3 w-3" />Location set
-              </span>
             )}
           </div>
         </CardContent>
