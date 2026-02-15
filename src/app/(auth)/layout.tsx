@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Badminton } from '@/components/icons';
+import { Copyright } from '@/components/copyright';
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -11,7 +12,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         <span>BadBuddy</span>
       </Link>
       <div className="w-full max-w-lg">{children}</div>
-      <p className="mt-8 text-xs text-muted-foreground">&copy; {new Date().getFullYear()} BadBuddy Club Portal</p>
+      <p className="mt-8 text-xs text-muted-foreground"><Copyright /></p>
     </div>
   );
 }

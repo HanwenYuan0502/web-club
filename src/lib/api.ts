@@ -60,11 +60,12 @@ export const auth = {
 // ─── User Profile ───
 export const me = {
   get: (token: string) =>
-    request<UserProfile>('/v1/me', { token }),
+    request<UserProfile>('/v1/users/me', { token }),
 
   update: (token: string, body: Partial<UserProfile>) =>
-    request<UserProfile>('/v1/me', { method: 'PATCH', token, body }),
+    request<UserProfile>('/v1/users/me', { method: 'PATCH', token, body }),
 
+  // NOTE: 以下功能未在API文档中，仅用于本地Mock测试
   searchClubs: (token: string, query?: string, filters?: { type?: string; joinMode?: string }) => {
     const params = new URLSearchParams();
     if (query) params.set('q', query);
@@ -97,6 +98,9 @@ export const clubs = {
 
   delete: (token: string, clubId: string) =>
     request<void>(`/v1/clubs/${clubId}`, { method: 'DELETE', token }),
+
+  disband: (token: string, clubId: string) =>
+    request<void>(`/v1/clubs/${clubId}/disband`, { method: 'POST', token }),
 };
 
 // ─── Members ───
@@ -111,7 +115,7 @@ export const members = {
     request<Member>(`/v1/clubs/${clubId}/members/me/settings`, { method: 'PATCH', token, body }),
 
   leave: (token: string, clubId: string) =>
-    request<void>(`/v1/clubs/${clubId}/members/me`, { method: 'DELETE', token }),
+    request<void>(`/v1/clubs/${clubId}/members/me/leave`, { method: 'POST', token }),
 
   updateByUser: (token: string, clubId: string, userId: string, body: { role?: string; status?: string; adminNotes?: string }) =>
     request<Member>(`/v1/clubs/${clubId}/members/by-user/${userId}`, { method: 'PATCH', token, body }),
@@ -155,11 +159,22 @@ export const applications = {
 
 // ─── Audit Logs ───
 export const auditLogs = {
-  query: (token: string, clubId: string, body: AuditLogQuery = {}) =>
-    request<AuditLogResponse>(`/v1/clubs/${clubId}/audit-logs`, { method: 'POST', token, body }),
+  query: (token: string, clubId: string, params: AuditLogQuery = {}) => {
+    const queryParams = new URLSearchParams();
+    if (params.limit) queryParams.set('limit', params.limit.toString());
+    if (params.offset !== undefined) queryParams.set('offset', params.offset.toString());
+    if (params.eventCategory) queryParams.set('eventCategory', params.eventCategory);
+    if (params.result) queryParams.set('result', params.result);
+    if (params.correlationId) queryParams.set('correlationId', params.correlationId);
+    if (params.createdAfter) queryParams.set('createdAfter', params.createdAfter);
+    if (params.createdBefore) queryParams.set('createdBefore', params.createdBefore);
+    const qs = queryParams.toString();
+    return request<AuditLogEntry[]>(`/v1/clubs/${clubId}/audit-logs${qs ? `?${qs}` : ''}`, { token });
+  },
 };
 
 // ─── Notifications ───
+// NOTE: 未在API文档中，仅用于本地Mock测试
 export const notifications = {
   list: (token: string) =>
     request<Notification[]>('/v1/me/notifications', { token }),
@@ -169,6 +184,7 @@ export const notifications = {
 };
 
 // ─── Events ───
+// NOTE: 未在API文档中，仅用于本地Mock测试
 export const events = {
   list: (token: string, clubId: string) =>
     request<ClubEvent[]>(`/v1/clubs/${clubId}/events`, { token }),
@@ -190,6 +206,7 @@ export const events = {
 };
 
 // ─── Upload ───
+// NOTE: 未在API文档中，仅用于本地Mock测试
 export const upload = {
   image: async (token: string, file: File): Promise<{ url: string }> => {
     const formData = new FormData();
@@ -334,18 +351,13 @@ export type AuditLogEntry = {
 };
 
 export type AuditLogQuery = {
-  pageSize?: number;
-  pageToken?: string;
+  limit?: number;
+  offset?: number;
   eventCategory?: string;
   result?: string;
   correlationId?: string;
   createdAfter?: string;
   createdBefore?: string;
-};
-
-export type AuditLogResponse = {
-  items: AuditLogEntry[];
-  nextPageToken: string;
 };
 
 export type Notification = {

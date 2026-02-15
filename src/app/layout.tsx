@@ -17,12 +17,15 @@ export const metadata: Metadata = {
   title: "BadBuddy Club Portal",
   description: "Club management portal for BadBuddy",
   manifest: "/manifest.json",
-  themeColor: "#171717",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
     title: "BadBuddy",
   },
+};
+
+export const viewport = {
+  themeColor: "#171717",
 };
 
 export default function RootLayout({
@@ -31,7 +34,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >

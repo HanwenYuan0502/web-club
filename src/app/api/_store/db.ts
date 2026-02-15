@@ -127,6 +127,10 @@ export type DbAuditLog = {
   actorUserId?: string;
   result: string;
   statusCode: number;
+  correlationId?: string;
+  errorMessage?: string;
+  ip?: string;
+  userAgent?: string;
   createdAt: string;
 };
 

@@ -17,8 +17,8 @@ import {
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger,
 } from '@/components/ui/sheet';
-import { LogOut, User, LayoutDashboard, Menu, Plus, Sun, Moon } from 'lucide-react';
-import { useTheme } from 'next-themes';
+import { LogOut, User, LayoutDashboard, Menu, Plus } from 'lucide-react';
+import { ThemeToggle } from '@/components/theme-toggle';
 import { NotificationBell } from '@/components/notification-bell';
 
 export function Navbar() {
@@ -26,7 +26,6 @@ export function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { theme, setTheme } = useTheme();
 
   const handleLogout = async () => {
     await logout();
@@ -109,9 +108,11 @@ export function Navbar() {
                 <DropdownMenuItem onClick={() => router.push('/profile')}>
                   <User className="mr-2 h-4 w-4" />Profile
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
-                  {theme === 'dark' ? <Sun className="mr-2 h-4 w-4" /> : <Moon className="mr-2 h-4 w-4" />}
-                  {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+                <DropdownMenuItem asChild>
+                  <div className="flex items-center gap-2 w-full cursor-pointer">
+                    <ThemeToggle />
+                    <span>Toggle Theme</span>
+                  </div>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
@@ -149,13 +150,10 @@ export function Navbar() {
                       </Link>
                     );
                   })}
-                  <button
-                    onClick={() => { setTheme(theme === 'dark' ? 'light' : 'dark'); }}
-                    className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                  >
-                    {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-                    {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
-                  </button>
+                  <div className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+                    <ThemeToggle />
+                    <span>Toggle Theme</span>
+                  </div>
                   <div className="my-3 h-px bg-border" />
                   <button
                     onClick={() => { handleLogout(); setMobileOpen(false); }}

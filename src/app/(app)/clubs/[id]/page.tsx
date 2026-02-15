@@ -49,7 +49,8 @@ export default function ClubDetailPage() {
   const [invitesList, setInvitesList] = useState<Invite[]>([]);
   const [applicationsList, setApplicationsList] = useState<Application[]>([]);
   const [auditLogsList, setAuditLogsList] = useState<AuditLogEntry[]>([]);
-  const [auditNextToken, setAuditNextToken] = useState('');
+  const [auditOffset, setAuditOffset] = useState(0);
+  const [auditHasMore, setAuditHasMore] = useState(true);
   const [eventsList, setEventsList] = useState<ClubEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
@@ -110,19 +111,21 @@ export default function ClubDetailPage() {
     } catch { /* empty */ }
   }, [getToken, clubId]);
 
-  const loadAuditLogs = useCallback(async (pageToken?: string) => {
+  const loadAuditLogs = useCallback(async (loadMore = false) => {
     const token = await getToken();
     if (!token || !isAdmin) return;
     try {
-      const data = await auditApi.query(token, clubId, { pageSize: 50, pageToken });
-      if (pageToken) {
-        setAuditLogsList(prev => [...prev, ...data.items]);
+      const offset = loadMore ? auditOffset : 0;
+      const data = await auditApi.query(token, clubId, { limit: 50, offset });
+      if (loadMore) {
+        setAuditLogsList(prev => [...prev, ...data]);
       } else {
-        setAuditLogsList(data.items);
+        setAuditLogsList(data);
       }
-      setAuditNextToken(data.nextPageToken);
+      setAuditOffset(offset + data.length);
+      setAuditHasMore(data.length === 50);
     } catch { /* empty */ }
-  }, [getToken, clubId, isAdmin]);
+  }, [getToken, clubId, isAdmin, auditOffset]);
 
   useEffect(() => { loadClub(); }, [loadClub]);
 
@@ -235,9 +238,9 @@ export default function ClubDetailPage() {
         <TabsContent value="audit">
           <AuditTab
             logs={auditLogsList}
-            nextToken={auditNextToken}
-            onLoadMore={() => loadAuditLogs(auditNextToken)}
-            onRefresh={() => loadAuditLogs()}
+            hasMore={auditHasMore}
+            onLoadMore={() => loadAuditLogs(true)}
+            onRefresh={() => loadAuditLogs(false)}
           />
         </TabsContent>
 
@@ -845,8 +848,8 @@ function ApplicationsTab({ applications, getToken, clubId, onRefresh }: {
 }
 
 // ─── Audit Logs Tab ───
-function AuditTab({ logs, nextToken, onLoadMore, onRefresh }: {
-  logs: AuditLogEntry[]; nextToken: string; onLoadMore: () => void; onRefresh: () => void;
+function AuditTab({ logs, hasMore, onLoadMore, onRefresh }: {
+  logs: AuditLogEntry[]; hasMore: boolean; onLoadMore: () => void; onRefresh: () => void;
 }) {
   return (
     <Card>
@@ -894,9 +897,9 @@ function AuditTab({ logs, nextToken, onLoadMore, onRefresh }: {
             )}
           </TableBody>
         </Table>
-        {nextToken && (
+        {hasMore && logs.length > 0 && (
           <div className="flex justify-center mt-4">
-            <Button variant="outline" size="sm" onClick={onLoadMore}>
+            <Button variant="outline" onClick={onLoadMore} size="sm">
               Load More <ChevronRight className="ml-1 h-3.5 w-3.5" />
             </Button>
           </div>

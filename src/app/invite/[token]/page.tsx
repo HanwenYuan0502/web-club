@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { invites as invitesApi, ApiError, type InvitePreview } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { Badminton } from '@/components/icons';
+import { Copyright } from '@/components/copyright';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -196,7 +197,7 @@ export default function InvitePage() {
         )}
       </div>
 
-      <p className="mt-8 text-xs text-muted-foreground">&copy; {new Date().getFullYear()} BadBuddy Club Portal</p>
+      <p className="mt-8 text-xs text-muted-foreground"><Copyright /></p>
     </div>
   );
 }
